@@ -47,6 +47,8 @@ class TranscriptionWorker(QThread):
         self.path = Path(path)
         self.options = options or TranscriptionOptions()
         self._transcriber: Transcriber | None = None
+        #: Timestamped segments of the last run (kept for future .srt export).
+        self.segments: list[Segment] = []
 
     def cancel(self) -> None:
         """Kill the running whisper-cli process, if any (thread-safe enough)."""
@@ -64,14 +66,14 @@ class TranscriptionWorker(QThread):
         self._transcriber = transcriber
         try:
             duration = transcriber.duration(self.path)
-            segments: list[Segment] = []
+            self.segments = []
             for segment in transcriber.iterate(self.path):
+                self.segments.append(segment)
                 if segment.text:
-                    segments.append(segment)
                     self.segment.emit(segment.text)
                 if duration and duration > 0:
                     self.progress.emit(min(0.99, segment.end / duration))
-            self.finished.emit(segments_to_text(segments))
+            self.finished.emit(segments_to_text(self.segments))
         except TranscriptionError as exc:
             self.error.emit(str(exc))
         except Exception as exc:  # never leak a raw traceback into the GUI

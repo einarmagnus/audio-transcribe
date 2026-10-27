@@ -63,13 +63,21 @@ pinned in the flake. GPU-accelerated on the user's Radeon RX 6400/6500 XT
 
 ## Phase 4 — Polish
 
-- [ ] Error dialogs for unreadable/unsupported files
-- [ ] Segment timestamps preserved internally (ready for future .srt export)
-- [ ] Sensible window title / app name ("Transcribe"); remember last window
-      size (QSettings)
-- [ ] CLI: `transcribe <file>` opens the GUI with that file preloaded
-- [ ] Model note in status label on first run ("first transcription may take
-      longer while the model loads")
+- [x] Error dialogs for unreadable/unsupported files (one warning per drop
+      batch with a details list; a critical dialog with expandable details for
+      per-file transcription failures, plus the status label/tooltip)
+- [x] Segment timestamps preserved internally (ready for future .srt export)
+      — `TranscriptionWorker.segments` and `MainWindow.last_segments`
+- [x] Sensible window title / app name ("Transcribe"); remember last window
+      size (`QSettings`, clamped to the available screen)
+- [x] CLI: `transcribe <file>` opens the GUI with that file preloaded
+      (wired in Phase 3; verified through the GUI option/preload test)
+- [x] Model note in status label on first run ("first transcription may take
+      longer while the model loads"; stored via `QSettings`, not repeated, and
+      not consumed by cache hits)
+- [x] Validated headlessly (`QT_QPA_PLATFORM=offscreen`): dialogs, timestamp
+      retention, size persistence, first-run note. Real desktop check of the
+      dialogs/size is still worth a quick look.
 
 ## Phase 5 — Packaging (optional, later)
 

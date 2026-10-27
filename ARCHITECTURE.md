@@ -63,6 +63,7 @@ Mesa/RADV — and the transcription streams into the GUI and into a sidecar
 | Output | GUI text + sidecar `<audio>.txt` | Zero-config persistence; the file lives next to the source audio. |
 | Cache | Sidecar file, checked before transcribing | "Already transcribed" = cache hit; transcript loaded instead of re-running the model. Writes are atomic (temp + `os.replace`). |
 | GUI toolkit | **PySide6 (Qt)** | Native drag-and-drop, QThread for background work, packaged in nixpkgs. |
+| UI state | **QSettings** for window size and the one-time model-load note; no settings dialog | Minimal persistence without building a settings UI. |
 | Always-on-top | **Not implemented** — left to the window manager | Native Wayland has no client protocol for keep-above (KWin/Mutter ignore the Qt hint); compositor window rules or extensions are the right layer. |
 | Dependencies | Everything from nixpkgs via `flake.nix` | Reproducible on NixOS; no pip/venv layering. |
 
@@ -83,9 +84,12 @@ Mesa/RADV — and the transcription streams into the GUI and into a sidecar
    estimated from the segment's end timestamp vs the audio duration (via
    `ffprobe`).
 6. **Finish** — worker emits the full text; UI displays it and calls
-   `cache.save(path, text)` (atomic write).
+   `cache.save(path, text)` (atomic write). The worker also keeps the
+   timestamped segments (`segments`); the window stores them in
+   `last_segments` for a future `.srt`/`.vtt` export.
 7. **Error** — worker emits a readable message (non-zero exit + stderr tail);
-   UI shows it in a status area or message box.
+   UI shows it in a message box with expandable details and in the status
+   label/tooltip.
 
 ## Threading rules
 
@@ -99,8 +103,8 @@ Mesa/RADV — and the transcription streams into the GUI and into a sidecar
 
 ## Future extensions (out of scope for v1)
 
-- `.srt`/`.vtt` export from segment timestamps (already parsed — keep them in
-  the worker result).
+- `.srt`/`.vtt` export from segment timestamps (kept in
+  `TranscriptionWorker.segments` / `MainWindow.last_segments`).
 - Model selector (medium/small quantized) for speed-vs-quality choice.
 - Long-running `whisper-server` mode (localhost HTTP) to keep weights resident
   in VRAM — relevant only if per-file model-load latency (a couple of seconds

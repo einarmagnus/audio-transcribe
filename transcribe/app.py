@@ -6,7 +6,7 @@ import sys
 from collections import deque
 from pathlib import Path
 
-from PySide6.QtCore import QMimeData, Qt
+from PySide6.QtCore import QMimeData, QSettings, QSize, Qt
 from PySide6.QtGui import QGuiApplication
 from PySide6.QtWidgets import (
     QApplication,
@@ -22,7 +22,7 @@ from PySide6.QtWidgets import (
 )
 
 from . import cache
-from .transcriber import TranscriptionOptions
+from .transcriber import Segment, TranscriptionOptions
 from .worker import TranscriptionWorker
 
 #: File types the GUI accepts drops for (CLI/ffmpeg may handle more).
@@ -42,22 +42,43 @@ class MainWindow(QMainWindow):
     def __init__(
         self,
         options: TranscriptionOptions | None = None,
+        settings: QSettings | None = None,
         parent=None,
     ) -> None:
         super().__init__(parent)
         self.setWindowTitle("Transcribe")
-        self.resize(820, 620)
         self.setMinimumSize(520, 360)
         self.setAcceptDrops(True)
 
         self._options = options or TranscriptionOptions()
+        self._settings = settings or QSettings("transcribe", "Transcribe")
         self._queue: deque[Path] = deque()
         self._busy = False
         self._closing = False
         self._worker: TranscriptionWorker | None = None
         self._current: Path | None = None
+        #: Timestamped segments of the last transcript (for future .srt export).
+        self.last_segments: list[Segment] = []
 
         self._build_ui()
+        self._restore_window_size()
+        self._first_run_note = not bool(
+            self._settings.value("ui/model_note_shown", False, type=bool)
+        )
+        if self._first_run_note:
+            self._set_status(
+                "First transcription may take longer while the model loads"
+            )
+
+    def _restore_window_size(self) -> None:
+        size = self._settings.value("window/size")
+        if not isinstance(size, QSize) or not size.isValid():
+            self.resize(820, 620)
+            return
+        screen = QGuiApplication.primaryScreen()
+        if screen is not None:
+            size = size.boundedTo(screen.availableGeometry().size())
+        self.resize(size.expandedTo(self.minimumSize()))
 
     # -- UI construction ---------------------------------------------------
 
@@ -127,22 +148,36 @@ class MainWindow(QMainWindow):
         if self._closing:
             return
         accepted = 0
+        rejected: list[tuple[Path, str]] = []
         for raw_path in paths:
             path = Path(raw_path).expanduser()
             if not path.exists():
                 self._set_status(f"Not found: {path}", error=True)
+                rejected.append((path, "not found"))
                 continue
             if path.is_dir():
                 self._set_status(f"Skipping folder: {path.name}", error=True)
+                rejected.append((path, "is a folder"))
                 continue
             if path.suffix.lower() not in SUPPORTED_EXTENSIONS:
                 self._set_status(
                     f"Unsupported file type: {path.suffix or path.name}", error=True
                 )
+                rejected.append(
+                    (path, f"unsupported type ({path.suffix or 'no extension'})")
+                )
                 continue
             self._queue.append(path)
             accepted += 1
 
+        if rejected and not self._closing:
+            details = "\n".join(f"{path}: {reason}" for path, reason in rejected)
+            self._show_message(
+                QMessageBox.Warning,
+                "Files skipped",
+                f"{len(rejected)} file(s) could not be added.",
+                details,
+            )
         if not accepted:
             return
         if self._busy:
@@ -167,11 +202,18 @@ class MainWindow(QMainWindow):
     def _begin_transcription(self, path: Path) -> None:
         self._busy = True
         self._current = path
+        self.last_segments = []
         self.transcript.clear()
         self.copy_button.setEnabled(False)
         self.progress.setRange(0, 0)  # indeterminate until the first segment
         queued = f" ({len(self._queue)} queued)" if self._queue else ""
-        self._set_status(f"Transcribing {path.name}…{queued}")
+        first_run = self._first_run_note
+        if first_run:
+            self._first_run_note = False
+            self._settings.setValue("ui/model_note_shown", True)
+            self._settings.sync()
+        note = " — first run: model load may take longer" if first_run else ""
+        self._set_status(f"Transcribing {path.name}…{queued}{note}")
 
         worker = TranscriptionWorker(path, self._options, self)
         worker.progress.connect(self._on_progress)
@@ -183,6 +225,7 @@ class MainWindow(QMainWindow):
 
     def _show_cached(self, path: Path, text: str) -> None:
         self._current = path
+        self.last_segments = []
         self.transcript.setPlainText(text)
         self.progress.setRange(0, 100)
         self.progress.setValue(100)
@@ -211,6 +254,8 @@ class MainWindow(QMainWindow):
 
     def _on_finished(self, text: str) -> None:
         path = self._current
+        worker = self._worker
+        self.last_segments = list(worker.segments) if worker is not None else []
         self._busy = False
         self.transcript.setPlainText(text)
         self.progress.setRange(0, 100)
@@ -248,6 +293,12 @@ class MainWindow(QMainWindow):
         self._set_status(f"Error: {first_line}", error=True, tooltip=message)
         self._finish_worker()
         if not self._closing:
+            self._show_message(
+                QMessageBox.Critical,
+                "Transcription failed",
+                first_line,
+                message,
+            )
             self._process_next()
 
     # -- small helpers -----------------------------------------------------
@@ -267,6 +318,17 @@ class MainWindow(QMainWindow):
             return
         QGuiApplication.clipboard().setText(text)
         self._set_status("Copied transcript to clipboard")
+
+    def _show_message(
+        self, icon, title: str, text: str, details: str = ""
+    ) -> None:
+        box = QMessageBox(self)
+        box.setIcon(icon)
+        box.setWindowTitle(title)
+        box.setText(text)
+        if details and details != text:
+            box.setDetailedText(details)
+        box.exec()
 
     # -- shutdown ----------------------------------------------------------
 
@@ -295,6 +357,8 @@ class MainWindow(QMainWindow):
                 )
                 event.ignore()
                 return
+        self._settings.setValue("window/size", self.size())
+        self._settings.sync()
         event.accept()
 
 
@@ -306,6 +370,7 @@ def run(
     app = QApplication.instance()
     if app is None:
         app = QApplication(sys.argv)
+        app.setOrganizationName("transcribe")
         app.setApplicationName("Transcribe")
     window = MainWindow(options)
     window.show()
