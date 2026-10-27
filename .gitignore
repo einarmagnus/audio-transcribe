@@ -1,0 +1,16 @@
+# Nix
+result
+result-*
+.direnv/
+
+# Python
+__pycache__/
+*.pyc
+
+# Local test scratch
+.tmp/
+
+# GPU crash diagnostics
+gpu-diagnosis-*.txt
+gpu-diagnosis-*.logs/
+radv_dumps*
