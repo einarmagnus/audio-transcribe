@@ -4,6 +4,8 @@ Local, GPU-accelerated audio transcription for Linux. Drop an audio file onto
 the window; whisper.cpp transcribes it with a pinned `ggml-large-v3-q5_0`
 model and writes `<audio>.txt` next to the source file.
 
+Source: `git@github.com:einarmagnus/audio-transcribe.git` (private).
+
 ## Features
 
 - Swedish and English speech; Whisper auto-detects the language
@@ -41,12 +43,18 @@ display iGPU.
 Add this repository as a flake input:
 
 ```nix
+# local checkout (simplest for nixos-rebuild on this machine)
 inputs.transcribe.url = "path:/home/einar/projects/transcribe";
+# or, from the private GitHub repo:
+# inputs.transcribe.url = "git+ssh://git@github.com/einarmagnus/audio-transcribe.git";
 inputs.transcribe.inputs.nixpkgs.follows = "nixpkgs";
 ```
 
 The `follows` line reuses your system's nixpkgs instead of pulling a second
-copy into the closure.
+copy into the closure. A private `git+ssh://` input is fetched as the user
+running `nixos-rebuild` (usually root), so root needs access to the SSH key;
+the `path:` form avoids that and is the recommended setup for a local
+checkout.
 
 Then either enable the module:
 
