@@ -28,6 +28,8 @@ python -m transcribe                 # launch the GUI
 python -m transcribe file.mp3        # GUI + preloaded file
 python -m transcribe --no-gui file.mp3   # print transcription to stdout (for testing)
 python -m transcribe --no-gui --no-gpu file.mp3   # CPU-only (skip Vulkan)
+nix run . -- --version               # build/run the packaged app
+nix build .#default                  # result/bin/transcribe
 ```
 
 GPU selection is automatic (first discrete Vulkan GPU; the display iGPU is
@@ -47,8 +49,7 @@ avoided on hybrid laptops). Override with `--device N` or
 ## Layout
 
 ```
-flake.nix            devshell (Python, PySide6, whisper-cpp-vulkan, ffmpeg,
-                     pinned ggml-large-v3-q5_0 model)
+flake.nix            devshell + package/app/overlay/NixOS module
 transcribe/
   __init__.py
   __main__.py        entry point, argument parsing
@@ -57,6 +58,8 @@ transcribe/
   transcriber.py     whisper.cpp subprocess wrapper (segment streaming,
                      ffmpeg fallback, errors, audio duration)
   cache.py           sidecar .txt cache read/write
+packaging/           .desktop entry, SVG icon and hicolor PNG sizes
+README.md            user-facing install and usage instructions
 ARCHITECTURE.md      design decisions and data flow
 PLAN.md              roadmap with phases
 ```
@@ -97,4 +100,5 @@ PLAN.md              roadmap with phases
 - GUI starts, accepts a dragged file, shows progress, shows the transcript.
 - `nix flake check` (if added) or at minimum `nix develop -c true` evaluates
   without errors.
+- `nix build .#default` succeeds; `./result/bin/transcribe --version` works.
 - `git status` is clean and the change is committed.

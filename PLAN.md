@@ -79,10 +79,19 @@ pinned in the flake. GPU-accelerated on the user's Radeon RX 6400/6500 XT
       retention, size persistence, first-run note. Real desktop check of the
       dialogs/size is still worth a quick look.
 
-## Phase 5 — Packaging (optional, later)
+## Phase 5 — Packaging
 
-- [ ] Nix derivation / `apps.<system>.default` so it runs outside the devshell
-- [ ] `.desktop` file + file-manager "Open with" integration
+- [x] Nix derivation / `apps.<system>.default` so it runs outside the devshell
+      (`packages.default`, `packages.transcribe`, `overlays.default`)
+- [x] `.desktop` file + SVG/PNG icons + file-manager "Open with" integration
+- [x] NixOS module (`programs.transcribe.enable`) and a README with install
+      instructions
+- [x] Wrapper pins `TRANSCRIBE_MODEL` and puts `whisper-cli`, `ffmpeg` and
+      `vulkaninfo` on `PATH`; app sets the desktop file name/app id
+- [x] Validated: `nix build .#default`, `nix run .`, `nix flake check`,
+      packaged CLI (cache hit + fresh CPU transcription), packaged GUI starts
+      offscreen, `desktop-file-validate`, NixOS module evaluation. System-wide
+      launch is pending the user's `nixos-rebuild switch`.
 - [ ] Consider HIP build of whisper.cpp (rocmPackages) if Vulkan throughput is
       disappointing on Navi 24 — expensive to build, ~20–30% faster at most
 - [ ] Model selector (medium/small quantized) if 4 GB VRAM shows pressure or

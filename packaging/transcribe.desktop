@@ -1,0 +1,15 @@
+[Desktop Entry]
+Version=1.5
+Type=Application
+Name=Transcribe
+GenericName=Audio Transcriber
+Comment=Transcribe audio files locally with whisper.cpp
+Exec=transcribe %f
+TryExec=transcribe
+Icon=transcribe
+Terminal=false
+Categories=AudioVideo;Audio;
+Keywords=transcribe;transcription;speech;whisper;subtitle;audio;swedish;english;
+MimeType=audio/mpeg;audio/x-wav;audio/wav;audio/mp4;audio/x-m4a;audio/ogg;audio/opus;audio/flac;audio/x-flac;audio/webm;video/webm;
+StartupNotify=true
+StartupWMClass=transcribe

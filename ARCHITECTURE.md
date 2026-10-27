@@ -66,6 +66,7 @@ Mesa/RADV — and the transcription streams into the GUI and into a sidecar
 | UI state | **QSettings** for window size and the one-time model-load note; no settings dialog | Minimal persistence without building a settings UI. |
 | Always-on-top | **Not implemented** — left to the window manager | Native Wayland has no client protocol for keep-above (KWin/Mutter ignore the Qt hint); compositor window rules or extensions are the right layer. |
 | Dependencies | Everything from nixpkgs via `flake.nix` | Reproducible on NixOS; no pip/venv layering. |
+| Packaging | **Nix package + `apps.default` + NixOS module**; wrapper pins the model and the runtime `PATH`, installs `.desktop`/icons | System-wide install and app-menu/file-manager launch with zero runtime downloads. |
 
 ## Data flow (GUI, one file)
 
@@ -100,6 +101,20 @@ Mesa/RADV — and the transcription streams into the GUI and into a sidecar
 - Cancellation: closing the window cancels the running `whisper-cli`
   (`Transcriber.cancel()`); cancelling an in-progress ffmpeg conversion is
   still future work.
+
+## Packaging
+
+- `nix build .#default` produces `result/bin/transcribe`, a wrapper around the
+  pinned Python/PySide6 interpreter. It sets `TRANSCRIBE_MODEL` and prepends
+  `whisper-cli`, `ffmpeg` and `vulkaninfo` to `PATH`.
+- `apps.default` supports `nix run .`; `overlays.default` exposes
+  `pkgs.transcribe`; `nixosModules.default` provides
+  `programs.transcribe.enable`.
+- `packaging/transcribe.desktop` (`Exec=transcribe %f`, audio MIME types) and
+  the waveform icon (SVG + hicolor PNG sizes) are installed under `share/`.
+  `QGuiApplication.setDesktopFileName("transcribe")` matches the Wayland
+  app_id, and the window icon is rendered from the bundled SVG with
+  `QSvgRenderer`.
 
 ## Future extensions (out of scope for v1)
 

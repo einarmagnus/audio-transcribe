@@ -6,8 +6,9 @@ import sys
 from collections import deque
 from pathlib import Path
 
-from PySide6.QtCore import QMimeData, QSettings, QSize, Qt
-from PySide6.QtGui import QGuiApplication
+from PySide6.QtCore import QByteArray, QMimeData, QSettings, QSize, Qt
+from PySide6.QtGui import QGuiApplication, QIcon, QPainter, QPixmap
+from PySide6.QtSvg import QSvgRenderer
 from PySide6.QtWidgets import (
     QApplication,
     QHBoxLayout,
@@ -36,6 +37,35 @@ def paths_from_mime(mime: QMimeData) -> list[Path]:
     if not mime.hasUrls():
         return []
     return [Path(url.toLocalFile()) for url in mime.urls() if url.isLocalFile()]
+
+
+def app_icon() -> QIcon:
+    """Return the application icon (theme first, then a rendered bundled SVG)."""
+    icon = QIcon.fromTheme("transcribe")
+    if not icon.isNull() and not icon.pixmap(48, 48).isNull():
+        return icon
+
+    candidates = (
+        Path(__file__).with_name("transcribe.svg"),
+        Path(__file__).resolve().parent.parent / "packaging" / "transcribe.svg",
+    )
+    for candidate in candidates:
+        if not candidate.is_file():
+            continue
+        renderer = QSvgRenderer(QByteArray(candidate.read_bytes()))
+        if not renderer.isValid():
+            continue
+        rendered = QIcon()
+        for size in (16, 24, 32, 48, 64, 128, 256):
+            pixmap = QPixmap(size, size)
+            pixmap.fill(Qt.transparent)
+            painter = QPainter(pixmap)
+            renderer.render(painter)
+            painter.end()
+            rendered.addPixmap(pixmap)
+        if not rendered.isNull():
+            return rendered
+    return QIcon()
 
 
 class MainWindow(QMainWindow):
@@ -372,6 +402,10 @@ def run(
         app = QApplication(sys.argv)
         app.setOrganizationName("transcribe")
         app.setApplicationName("Transcribe")
+    QGuiApplication.setDesktopFileName("transcribe")
+    icon = app_icon()
+    if not icon.isNull():
+        app.setWindowIcon(icon)
     window = MainWindow(options)
     window.show()
     if path is not None:
