@@ -42,7 +42,11 @@ Add this repository as a flake input:
 
 ```nix
 inputs.transcribe.url = "path:/home/einar/projects/transcribe";
+inputs.transcribe.inputs.nixpkgs.follows = "nixpkgs";
 ```
+
+The `follows` line reuses your system's nixpkgs instead of pulling a second
+copy into the closure.
 
 Then either enable the module:
 
