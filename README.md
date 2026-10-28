@@ -4,7 +4,7 @@ Local, GPU-accelerated audio transcription for Linux. Drop an audio file onto
 the window; whisper.cpp transcribes it with a pinned `ggml-large-v3-q5_0`
 model and writes `<audio>.txt` next to the source file.
 
-Source: `git@github.com:einarmagnus/audio-transcribe.git` (private).
+Source: https://github.com/einarmagnus/audio-transcribe
 
 ## Features
 
@@ -43,18 +43,17 @@ display iGPU.
 Add this repository as a flake input:
 
 ```nix
-# local checkout (simplest for nixos-rebuild on this machine)
-inputs.transcribe.url = "path:/home/einar/projects/transcribe";
-# or, from the private GitHub repo:
-# inputs.transcribe.url = "git+ssh://git@github.com/einarmagnus/audio-transcribe.git";
+# public GitHub input
+inputs.transcribe.url = "github:einarmagnus/audio-transcribe";
+# or a local checkout:
+# inputs.transcribe.url = "path:/path/to/audio-transcribe";
 inputs.transcribe.inputs.nixpkgs.follows = "nixpkgs";
 ```
 
 The `follows` line reuses your system's nixpkgs instead of pulling a second
-copy into the closure. A private `git+ssh://` input is fetched as the user
-running `nixos-rebuild` (usually root), so root needs access to the SSH key;
-the `path:` form avoids that and is the recommended setup for a local
-checkout.
+copy into the closure. For a private fork, use
+`git+ssh://git@github.com/<you>/audio-transcribe.git`; Nix fetches that as the
+user running `nixos-rebuild` (usually root), so that user needs the SSH key.
 
 Then either enable the module:
 
@@ -95,3 +94,7 @@ xdg.mime.defaultApplications = {
   "audio/flac" = "transcribe.desktop";
 };
 ```
+
+## License
+
+MIT — see [LICENSE](LICENSE).

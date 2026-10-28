@@ -60,6 +60,7 @@ transcribe/
   cache.py           sidecar .txt cache read/write
 packaging/           .desktop entry, SVG icon and hicolor PNG sizes
 README.md            user-facing install and usage instructions
+LICENSE              MIT license
 ARCHITECTURE.md      design decisions and data flow
 PLAN.md              roadmap with phases
 ```

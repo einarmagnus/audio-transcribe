@@ -64,6 +64,8 @@
 
         meta = with pkgs.lib; {
           description = "Drag-and-drop audio transcription with whisper.cpp";
+          homepage = "https://github.com/einarmagnus/audio-transcribe";
+          license = licenses.mit;
           platforms = platforms.linux;
           mainProgram = "transcribe";
         };
