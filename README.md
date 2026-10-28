@@ -95,6 +95,11 @@ xdg.mime.defaultApplications = {
 };
 ```
 
+## AI disclosure
+
+This project was entirely vibe-coded with DeepSeek. The initial planning
+round was done with GLM 5.3-flash.
+
 ## License
 
 MIT — see [LICENSE](LICENSE).
